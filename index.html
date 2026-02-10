@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoViz LLM - Génération Intelligente de Visualisations</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-container">
+        <div class="bg-gradient"></div>
+        <div class="bg-dots"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-content">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 3L21 21M3 21L21 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span class="logo-text">AutoViz<span class="logo-accent">LLM</span></span>
+            </div>
+            <div class="nav-links">
+                <button class="btn-ghost" onclick="showSection('home')">Accueil</button>
+                <button class="btn-ghost" onclick="showSection('about')">À propos</button>
+                <button class="btn-ghost" onclick="toggleConfig()">Config</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Configuration Sidebar -->
+    <div class="config-sidebar" id="configSidebar">
+        <div class="config-header">
+            <h3>Configuration API</h3>
+            <button class="btn-close" onclick="toggleConfig()">×</button>
+        </div>
+        <div class="config-content">
+            <div class="form-group">
+                <label>Base URL</label>
+                <input type="text" id="baseUrl" value="https://openrouter.ai/api/v1" placeholder="API Base URL">
+            </div>
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" id="apiKey" placeholder="Votre clé API">
+            </div>
+            <div class="form-group">
+                <label>Modèle</label>
+                <input type="text" id="model" value="openai/gpt-4o-mini" placeholder="Nom du modèle">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="offlineMode">
+                    <span>Mode Offline</span>
+                </label>
+                <p class="help-text">Active des propositions sans appel API</p>
+            </div>
+            <button class="btn-primary" onclick="saveConfig()">Sauvegarder</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero" id="home">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    <span class="title-line">Transformez vos données</span>
+                    <span class="title-line">en <span class="highlight">visualisations</span></span>
+                    <span class="title-line">intelligentes</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Générez automatiquement 3 propositions de graphiques pertinents avec l'IA.
+                    Choisissez, personnalisez, exportez.
+                </p>
+                <button class="btn-hero" onclick="scrollToUpload()">
+                    Commencer
+                    <svg class="icon-arrow" viewBox="0 0 24 24" fill="none">
+                        <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="hero-visual">
+                <div class="chart-preview">
+                    <div class="chart-bars">
+                        <div class="bar" style="--height: 60%; --delay: 0s;"></div>
+                        <div class="bar" style="--height: 85%; --delay: 0.1s;"></div>
+                        <div class="bar" style="--height: 45%; --delay: 0.2s;"></div>
+                        <div class="bar" style="--height: 70%; --delay: 0.3s;"></div>
+                        <div class="bar" style="--height: 90%; --delay: 0.4s;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="upload-section" id="uploadSection">
+            <div class="section-header">
+                <h2 class="section-title">Étape 1: Chargez vos données</h2>
+                <div class="step-badge">1/3</div>
+            </div>
+            
+            <div class="upload-area" id="uploadArea">
+                <input type="file" id="fileInput" accept=".csv" style="display: none;" onchange="handleFileUpload(event)">
+                <div class="upload-content">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 15V3M12 3L8 7M12 3L16 7M3 15V18C3 19.1046 3.89543 20 5 20H19C20.1046 20 21 19.1046 21 18V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <h3>Glissez-déposez votre CSV</h3>
+                    <p>ou <button class="btn-link" onclick="document.getElementById('fileInput').click()">parcourez vos fichiers</button></p>
+                    <p class="file-info">Format: CSV • Taille max: 10MB</p>
+                </div>
+            </div>
+
+            <div class="data-preview" id="dataPreview" style="display: none;">
+                <div class="preview-header">
+                    <h3>Aperçu des données</h3>
+                    <button class="btn-ghost" onclick="clearData()">Changer de fichier</button>
+                </div>
+                <div class="preview-stats" id="dataStats"></div>
+                <div class="preview-table" id="dataTable"></div>
+            </div>
+        </section>
+
+        <!-- Problem Section -->
+        <section class="problem-section" id="problemSection" style="display: none;">
+            <div class="section-header">
+                <h2 class="section-title">Étape 2: Décrivez votre analyse</h2>
+                <div class="step-badge">2/3</div>
+            </div>
+
+            <div class="problem-card">
+                <label class="problem-label">Quelle question voulez-vous répondre ?</label>
+                <textarea 
+                    id="problemInput" 
+                    class="problem-textarea" 
+                    placeholder="Exemple: Comment les ventes évoluent-elles par région au fil du temps ? Quels sont les facteurs qui influencent la performance ?"
+                    rows="5"
+                ></textarea>
+                <div class="problem-examples">
+                    <span class="example-label">Exemples:</span>
+                    <button class="btn-example" onclick="setExample('Quels sont les facteurs qui influencent les ventes ?')">Facteurs de vente</button>
+                    <button class="btn-example" onclick="setExample('Comment évolue la performance dans le temps ?')">Évolution temporelle</button>
+                    <button class="btn-example" onclick="setExample('Y a-t-il des corrélations entre les variables ?')">Corrélations</button>
+                </div>
+                <button class="btn-generate" id="generateBtn" onclick="generateProposals()">
+                    <span class="btn-text">Générer 3 propositions</span>
+                    <span class="btn-loader" style="display: none;">
+                        <svg class="spinner" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" opacity="0.25"/>
+                            <path d="M12 2C6.47715 2 2 6.47715 2 12" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                        Génération...
+                    </span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Proposals Section -->
+        <section class="proposals-section" id="proposalsSection" style="display: none;">
+            <div class="section-header">
+                <h2 class="section-title">Étape 3: Choisissez votre visualisation</h2>
+                <div class="step-badge">3/3</div>
+            </div>
+
+            <div class="proposals-grid" id="proposalsGrid">
+                <!-- Proposals will be dynamically inserted here -->
+            </div>
+        </section>
+
+        <!-- Visualization Section -->
+        <section class="visualization-section" id="visualizationSection" style="display: none;">
+            <div class="section-header">
+                <h2 class="section-title">Votre visualisation</h2>
+                <div class="viz-actions">
+                    <button class="btn-secondary" onclick="copySpec()">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none">
+                            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        Copier spec
+                    </button>
+                    <button class="btn-primary" onclick="exportPNG()">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none">
+                            <path d="M21 15V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V15M17 10L12 15M12 15L7 10M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        Exporter PNG
+                    </button>
+                </div>
+            </div>
+            
+            <div class="chart-container" id="chartContainer">
+                <!-- Vega-Lite chart will be rendered here -->
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section class="about-section" id="about" style="display: none;">
+            <div class="about-content">
+                <h2 class="section-title">À propos d'AutoViz LLM</h2>
+                <div class="about-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🤖</div>
+                        <h3>IA Avancée</h3>
+                        <p>Utilise des modèles de langage pour analyser vos données et proposer les visualisations les plus pertinentes.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Rapide et Simple</h3>
+                        <p>3 étapes simples : chargez vos données, décrivez votre besoin, choisissez votre graphique.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎨</div>
+                        <h3>Professionnel</h3>
+                        <p>Visualisations basées sur Vega-Lite avec export PNG haute qualité.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3>Sécurisé</h3>
+                        <p>Vos données restent locales, seules les métadonnées sont envoyées à l'API.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <p>AutoViz LLM v1.0.0</p>
+                <p class="footer-subtitle">Fait avec ❤️ par Mehdi</p>
+            </div>
+            <div class="footer-right">
+                <a href="https://github.com" class="footer-link">GitHub</a>
+                <a href="#" class="footer-link">Documentation</a>
+                <a href="#" class="footer-link">Support</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5"></script>
+    <script src="app.js"></script>
+</body>
+</html>
