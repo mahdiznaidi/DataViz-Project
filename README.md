@@ -310,4 +310,4 @@ Les contributions sont bienvenues !
 
 **Fait avec ❤️ et beaucoup de CSS**
 
-Version 2.0.0 | Décembre 2024
+
