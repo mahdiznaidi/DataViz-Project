@@ -20,66 +20,29 @@ let appState = {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM Content Loaded');
-    console.log('Papa available:', typeof Papa !== 'undefined');
-    console.log('Vega available:', typeof vega !== 'undefined');
-    console.log('VegaLite available:', typeof vegaLite !== 'undefined');
-    console.log('VegaEmbed available:', typeof vegaEmbed !== 'undefined');
-    
-    // Check critical elements
-    const uploadArea = document.getElementById('uploadArea');
-    const fileInput = document.getElementById('fileInput');
-    const problemSection = document.getElementById('problemSection');
-    
-    console.log('Critical elements check:');
-    console.log('- uploadArea:', !!uploadArea);
-    console.log('- fileInput:', !!fileInput);
-    console.log('- problemSection:', !!problemSection);
-    
-    if (typeof Papa === 'undefined') {
-        console.error('PapaParse not loaded!');
-        alert('Erreur: PapaParse non chargé. Veuillez recharger la page.');
-        return;
-    }
-    
     loadConfig();
     setupEventListeners();
     showSection('home');
-    
-    console.log('Initialization complete');
 });
 
 // Event Listeners
 function setupEventListeners() {
     const uploadArea = document.getElementById('uploadArea');
-    const fileInput = document.getElementById('fileInput');
-    
-    console.log('Setting up event listeners...');
-    console.log('uploadArea:', uploadArea);
-    console.log('fileInput:', fileInput);
-    
-    if (!uploadArea || !fileInput) {
-        console.error('Upload area or file input not found!');
-        return;
-    }
     
     // Drag and drop
     uploadArea.addEventListener('dragover', (e) => {
         e.preventDefault();
         uploadArea.classList.add('drag-over');
-        console.log('Drag over');
     });
     
     uploadArea.addEventListener('dragleave', () => {
         uploadArea.classList.remove('drag-over');
-        console.log('Drag leave');
     });
     
     uploadArea.addEventListener('drop', (e) => {
         e.preventDefault();
         uploadArea.classList.remove('drag-over');
         const files = e.dataTransfer.files;
-        console.log('Files dropped:', files.length);
         if (files.length > 0) {
             handleFile(files[0]);
         }
@@ -87,19 +50,8 @@ function setupEventListeners() {
     
     // Click to upload
     uploadArea.addEventListener('click', () => {
-        console.log('Upload area clicked');
-        fileInput.click();
+        document.getElementById('fileInput').click();
     });
-    
-    // File input change
-    fileInput.addEventListener('change', (e) => {
-        console.log('File input changed');
-        if (e.target.files && e.target.files.length > 0) {
-            handleFile(e.target.files[0]);
-        }
-    });
-    
-    console.log('Event listeners set up successfully');
 }
 
 // Navigation
@@ -165,13 +117,6 @@ function handleFileUpload(event) {
 }
 
 function handleFile(file) {
-    console.log('handleFile called with:', file);
-    
-    if (!file) {
-        showToast('Aucun fichier sélectionné', 'error');
-        return;
-    }
-    
     if (!file.name.endsWith('.csv')) {
         showToast('Veuillez sélectionner un fichier CSV', 'error');
         return;
@@ -182,44 +127,22 @@ function handleFile(file) {
         return;
     }
     
-    // Check if Papa is loaded
-    if (typeof Papa === 'undefined') {
-        showToast('Erreur: PapaParse non chargé. Rechargez la page.', 'error');
-        console.error('Papa is not defined');
-        return;
-    }
-    
     appState.data.fileName = file.name;
-    console.log('Parsing file:', file.name);
-    
-    // Show loading indicator
-    showToast('Chargement du fichier...', 'success');
     
     Papa.parse(file, {
         header: true,
         dynamicTyping: true,
         skipEmptyLines: true,
         complete: (results) => {
-            console.log('Parse complete:', results);
-            
-            if (!results.data || results.data.length === 0) {
-                showToast('Le fichier CSV est vide', 'error');
-                return;
-            }
-            
             appState.data.raw = results.data;
             appState.data.parsed = results.data;
-            
-            console.log('Data loaded:', appState.data.parsed.length, 'rows');
-            
             displayDataPreview();
             document.getElementById('problemSection').style.display = 'block';
             document.getElementById('problemSection').scrollIntoView({ behavior: 'smooth' });
-            showToast(`✅ Fichier "${file.name}" chargé : ${results.data.length} lignes`, 'success');
+            showToast(`Fichier "${file.name}" chargé avec succès`, 'success');
         },
         error: (error) => {
-            console.error('Parse error:', error);
-            showToast(`❌ Erreur de lecture: ${error.message}`, 'error');
+            showToast(`Erreur de lecture: ${error.message}`, 'error');
         }
     });
 }
@@ -294,93 +217,22 @@ async function generateProposals() {
         return;
     }
     
-    if (!appState.data.parsed) {
-        showToast('Veuillez d\'abord charger un fichier CSV', 'error');
-        return;
-    }
-    
-    // 1. Validation de longueur minimale
+    // Validation de la longueur et du contenu
     if (problem.length < 10) {
         showToast('Votre problématique est trop courte. Décrivez ce que vous souhaitez analyser (ex: "Comment évoluent les ventes par région ?")', 'error');
         return;
     }
     
-    // 2. Détection de conversations générales (salutations, politesse, etc.)
-    const isGreeting = /^(bonjour|salut|hello|hi|hey|coucou|bonsoir|bonne\s+journée|comment\s+(vas-tu|allez-vous|ça\s+va))/i.test(problem);
-    const isPolite = /^(merci|thank\s+you|thanks|au\s+revoir|bye|à\s+bientôt|bon\s+courage)/i.test(problem);
-    const isSmallTalk = /(ça\s+va|how\s+are\s+you|fine|bien|mal|fatigué|content)/i.test(problem);
-    const isGeneral = /(qui\s+es-tu|qu'est-ce\s+que\s+tu|peux-tu\s+m'aider|aide-moi|c'est\s+quoi)/i.test(problem);
+    // Vérifier que c'est une vraie question d'analyse
+    const hasDataKeywords = /comment|quel|quelle|quels|quelles|combien|relation|évolution|répartition|distribution|comparaison|tendance|corrélation|analyse|montre|affiche|visualise/i.test(problem);
     
-    if (isGreeting || isPolite || (isSmallTalk && problem.length < 30)) {
-        showToast(
-            '⚠️ Ceci semble être une conversation générale. Pour analyser vos données, posez une question analytique. Exemples:\n' +
-            '• "Quelle est la répartition des ventes par région ?"\n' +
-            '• "Comment le prix évolue-t-il avec la surface ?"\n' +
-            '• "Combien de maisons ont plus de 3 chambres ?"',
-            'warning'
-        );
+    if (!hasDataKeywords) {
+        showToast('Votre problématique doit décrire une analyse de données. Exemple: "Quelle est la répartition des ventes par région ?" ou "Comment le prix évolue-t-il avec la surface ?"', 'warning');
         return;
     }
     
-    if (isGeneral && !/(données|data|fichier|csv|colonnes?|variables?)/i.test(problem)) {
-        showToast(
-            '💡 Pour analyser vos données, posez une question spécifique sur les colonnes de votre fichier. Regardez l\'aperçu des données ci-dessus pour voir les colonnes disponibles.',
-            'warning'
-        );
-        return;
-    }
-    
-    // 3. Vérifier la présence de mots-clés d'analyse de données
-    const dataAnalysisKeywords = /comment|quel(le)?s?|combien|relation|évolution|évol|répartition|distribution|comparaison|compar|tendance|corrélation|corrél|analyse|montre|affiche|visualise|afficher|montrer|voir|regarder|explorer|examiner|étud|identif|observ|mesur|calcul|éval|estim/i.test(problem);
-    
-    if (!dataAnalysisKeywords) {
-        showToast(
-            '❌ Votre question doit porter sur l\'analyse de vos données. Utilisez des verbes d\'action:\n' +
-            '• "Comment..." / "Quelle..." / "Combien..."\n' +
-            '• "Montre-moi..." / "Affiche..." / "Visualise..."\n' +
-            '• "Analyse..." / "Compare..." / "Explore..."',
-            'error'
-        );
-        return;
-    }
-    
-    // 4. Vérifier que la question mentionne au moins un concept lié aux données
-    const columns = Object.keys(appState.data.parsed[0] || {});
-    const problemLower = problem.toLowerCase();
-    
-    // Concepts de données génériques
-    const hasDataConcepts = /(données|valeurs|nombre|quantité|montant|total|moyenne|somme|minimum|maximum|distribution|fréquence|pourcentage|proportion|ratio|taux|évolution|variation|croissance|tendance)/i.test(problem);
-    
-    // Ou mentionne une colonne du dataset
-    const mentionsColumn = columns.some(col => {
-        const colLower = col.toLowerCase().replace(/_/g, ' ');
-        return problemLower.includes(colLower) || problemLower.includes(col.toLowerCase());
-    });
-    
-    if (!hasDataConcepts && !mentionsColumn) {
-        const columnsList = columns.slice(0, 5).join(', ');
-        const moreColumns = columns.length > 5 ? `, et ${columns.length - 5} autres` : '';
-        
-        showToast(
-            `💡 Votre question doit mentionner un aspect de vos données.\n\n` +
-            `Colonnes disponibles: ${columnsList}${moreColumns}\n\n` +
-            `Exemple: "Quelle est la répartition par ${columns[0]} ?"`,
-            'warning'
-        );
-        return;
-    }
-    
-    // 5. Vérifier que ce n'est pas une question trop vague
-    const tooVague = /^(montre|affiche|visualise|analyse|regarde)\s*(moi)?\s*(les|des|mes)?\s*(données|data|tout|ça|ceci)?\s*$/i.test(problem);
-    
-    if (tooVague) {
-        showToast(
-            '❌ Question trop vague. Soyez plus spécifique:\n' +
-            '• Quelle colonne voulez-vous analyser ?\n' +
-            '• Quel type de relation cherchez-vous ?\n' +
-            '• Quelle question précise posez-vous ?',
-            'error'
-        );
+    if (!appState.data.parsed) {
+        showToast('Veuillez d\'abord charger un fichier CSV', 'error');
         return;
     }
     
@@ -980,41 +832,16 @@ function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
-    // Support multi-line messages
-    const lines = message.split('\n');
-    if (lines.length > 1) {
-        toast.innerHTML = lines.map(line => {
-            if (line.startsWith('•')) {
-                return `<div style="margin-left: 1rem;">${line}</div>`;
-            }
-            return `<div>${line}</div>`;
-        }).join('');
-    } else {
-        toast.textContent = message;
-    }
-    
-    // Add icon based on type
-    const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : '⚠';
-    const iconEl = document.createElement('span');
-    iconEl.style.marginRight = '0.5rem';
-    iconEl.style.fontWeight = 'bold';
-    iconEl.textContent = icon;
-    toast.prepend(iconEl);
+    toast.textContent = message;
     
     container.appendChild(toast);
-    
-    // Auto-dismiss after longer time for complex messages
-    const dismissTime = lines.length > 3 ? 6000 : 4000;
     
     setTimeout(() => {
         toast.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => {
-            if (container.contains(toast)) {
-                container.removeChild(toast);
-            }
+            container.removeChild(toast);
         }, 300);
-    }, dismissTime);
+    }, 3000);
 }
 
 // Utility: Slide out animation
